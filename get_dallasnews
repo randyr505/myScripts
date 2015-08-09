@@ -1,1 +1,61 @@
-/home/randyr/bin/get_dallasnews
+#!/bin/sh
+link=no
+case $# in
+ 1) today=$1 #today=`date +%Y-%m-%d`
+    ;;
+ *) today=`date +%Y-%m-%d`
+    link=yes
+    ;;
+esac
+
+dir="$HOME/My/Newspapers"
+box="$HOME/My/Dropbox/Newspapers"
+name="Dallas-News"
+business=$HOME/bin/business_paper
+cookies="$HOME/.mozilla/firefox/eoho6rl9.default/cookies.txt"
+repo="http://digital.olivesoftware.com/Repository/DMN"
+
+set `echo $today | awk -F\- '{print$1" "$2" "$3}'`
+
+year=$1; month=$2; day=$3
+today_link="DMN%2F$1%2F$2%2F$3"
+
+#Get Newspaper
+wget --user-agent='Firefox/3.0' --load-cookies $cookies "$repo/$year/$month/$day/DMN_${year}_${month}_${day}_FINAL.pdf" \
+     -O $dir/$name-$today.pdf
+
+#Get Table of Contents
+wget --user-agent='Firefox/2.0' --load-cookies $cookies "$repo/$year/$month/$day/TOC.xml" -O $dir/$name-$today.xml
+
+cd $dir
+case $link in
+ yes)
+      rm -f TodaysPaper.pdf TodaysBusinessPaper.pdf TodaysPaper.xml
+      ln -s $name-$today.pdf TodaysPaper.pdf
+      rm -f $box/YesterdaysPaper.pdf $box/YesterdaysBusinessPaper.pdf
+			sleep 5
+      mv $box/TodaysPaper.pdf $box/YesterdaysPaper.pdf
+      mv $box/TodaysBusinessPaper.pdf $box/YesterdaysBusinessPaper.pdf
+			sleep 5
+			cp $name-$today.pdf $box/TodaysPaper.pdf
+      ln -s $name-$today.xml TodaysPaper.xml
+
+      type=`file $dir/$name-$today.pdf | awk -F: '{print$2}' | awk -F, '{print$1}'`
+      case $type in
+       *PDF*) ;;
+           *) echo "$name-$today.pdf is not a valid pdf file...exiting"; exit ;;
+      esac
+      $business $name-$today.pdf
+
+      ln -s $name-$today-Business.pdf TodaysBusinessPaper.pdf
+			cp $name-$today-Business.pdf $box/TodaysBusinessPaper.pdf
+
+      export DISPLAY=:0 && okular $dir/TodaysBusinessPaper.pdf &
+      gdu $dir/$name-$today-Business.pdf MyNewspapers
+      ;;
+  no) 
+      $business $name-$today.pdf
+      ;;
+esac
+
+#End of script
